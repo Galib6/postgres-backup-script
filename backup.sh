@@ -71,17 +71,29 @@ create_backup() {
 
 
 backup_with_lock() {
+    if [ -d "$LOCK_FILE" ]; then
+        log "Another backup process is running. Removing stale lock file if process is dead."
+        # Check if the process holding the lock is alive
+        if ! fuser "$LOCK_FILE" >/dev/null 2>&1; then
+            rm -rf "$LOCK_FILE"
+            log "Removed stale lock file."
+        else
+            return 1
+        fi
+    fi
+
     if ! mkdir "$LOCK_FILE" 2>/dev/null; then
         log "Another backup process is running"
         return 1
     fi
-    
+
     trap 'rm -rf "$LOCK_FILE"' EXIT
-    
+
     check_space || return 1
     create_backup || return 1
     cleanup_old
 }
+
 
 # Main loop
 while true; do
