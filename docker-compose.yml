@@ -2,6 +2,8 @@ services:
   postgres-backup:
     build: .
     restart: unless-stopped
+    ports:
+      - "3000:3000" # Add this line to expose the web interface
     volumes:
       - ./backups:/backups
       - ./logs:/var/log

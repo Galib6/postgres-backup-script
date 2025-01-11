@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PostgreSQL Backup Files Manager</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f2f5;
+        position: relative;
+        height: 100vh;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 10px;
+      }
+      .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 5px;
+      }
+      .refresh-btn {
+        padding: 8px 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .refresh-btn:hover {
+        background-color: #0056b3;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background-color: #f8f9fa;
+      }
+      .delete-btn {
+        background-color: #dc3545;
+        color: white;
+      }
+      .delete-btn:hover {
+        background-color: #c82333;
+      }
+      .download-btn {
+        background-color: #28a745;
+        color: white;
+      }
+      .download-btn:hover {
+        background-color: #218838;
+      }
+      .restore-btn {
+        background-color: #17a2b8;
+        color: white;
+      }
+      .restore-btn:hover {
+        background-color: #138496;
+      }
+      .error-message {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        display: none;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        font-style: italic;
+        color: #666;
+      }
+      .actions {
+        white-space: nowrap;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .form-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      .status-message {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .status-success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .status-error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .modal-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .close-btn {
+        background-color: #6c757d;
+        color: white;
+      }
+      .close-btn:hover {
+        background-color: #5a6268;
+      }
+
+      .restore-btn .spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        width: 12px;
+        height: 12px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        margin-left: 8px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>PostgreSQL Backup Files Manager</h1>
+        <button id="refreshBtn" class="refresh-btn">Refresh</button>
+      </div>
+
+      <div id="errorMessage" class="error-message"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Size</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="filesList">
+          <tr>
+            <td colspan="4" class="loading">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div>
+        <p>
+          <strong>Note:</strong> Backup files are stored in the
+          <code>/backups</code> directory inside the PostgreSQL container.
+        </p>
+      </div>
+      <div>
+        <p>
+          <strong>Restore:</strong> To restore a backup, click the "Restore"
+          button next to the backup file. You will be prompted to enter the
+          database connection details.
+        </p>
+      </div>
+      <div style="position: absolute; bottom: 0; text-align: center">
+        <p style="color: #014369">Developed by Galib</p>
+      </div>
+    </div>
+
+    <!-- Restore Modal -->
+    <div id="restoreModal" class="modal">
+      <div class="modal-content">
+        <h2>Restore Backup</h2>
+        <form id="restoreForm">
+          <div class="form-group">
+            <label for="host">Database Host:</label>
+            <input
+              type="text"
+              id="host"
+              name="host"
+              value="host.docker.internal"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="user">Database User:</label>
+            <input type="text" id="user" name="user" value="galib" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Database Password:</label>
+            <input type="password" id="password" name="password" required />
+          </div>
+          <div class="form-group">
+            <label for="database">Database Name:</label>
+            <input type="text" id="database" name="database" required />
+          </div>
+          <input type="hidden" id="filename" name="filename" />
+          <div
+            id="statusMessage"
+            class="status-message"
+            style="display: none"
+          ></div>
+          <div class="modal-buttons">
+            <button
+              type="button"
+              class="btn close-btn"
+              onclick="closeRestoreModal()"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn restore-btn">Restore</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = "/api/backups";
+      let isRestoring = false; // Flag to track the restoring process
+
+      function formatFileSize(bytes) {
+        const sizes = ["B", "KB", "MB", "GB"];
+        if (bytes === 0) return "0 B";
+        const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+      }
+
+      function formatDate(isoString) {
+        if (!isoString) {
+          return "Invalid date";
+        }
+
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) {
+          return "Invalid date";
+        }
+
+        return date.toLocaleString("en-US", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          timeZoneName: "short",
+        });
+      }
+
+      function showError(message) {
+        const errorElement = document.getElementById("errorMessage");
+        errorElement.textContent = message;
+        errorElement.style.display = "block";
+        setTimeout(() => {
+          errorElement.style.display = "none";
+        }, 5000);
+      }
+
+      async function fetchFiles() {
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) throw new Error("Failed to fetch files");
+          const files = await response.json();
+          displayFiles(files);
+        } catch (error) {
+          showError("Error loading backup files");
+          displayFiles([]);
+        }
+      }
+
+      async function deleteFile(filename) {
+        if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
+
+        try {
+          const response = await fetch(`${API_URL}/${filename}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) throw new Error("Failed to delete file");
+
+          fetchFiles();
+        } catch (error) {
+          showError("Error deleting file");
+        }
+      }
+
+      function downloadFile(filename) {
+        window.location.href = `${API_URL}/download/${filename}`;
+      }
+
+      function showRestoreModal(filename) {
+        document.getElementById("filename").value = filename;
+        document.getElementById("restoreModal").style.display = "flex";
+        document.getElementById("statusMessage").style.display = "none";
+      }
+
+      function closeRestoreModal() {
+        document.getElementById("restoreModal").style.display = "none";
+      }
+
+      async function restoreBackup(event) {
+        event.preventDefault();
+
+        const statusMessage = document.getElementById("statusMessage");
+        const restoreButton = document.querySelector(
+          "#restoreForm .restore-btn"
+        );
+        const closeButton = document.querySelector("#restoreForm .close-btn");
+        const modal = document.getElementById("restoreModal");
+
+        const formData = {
+          host: document.getElementById("host").value,
+          user: document.getElementById("user").value,
+          password: document.getElementById("password").value,
+          database: document.getElementById("database").value,
+        };
+        const filename = document.getElementById("filename").value;
+        isRestoring = true;
+
+        try {
+          // Set buttons to loading state
+          restoreButton.innerHTML =
+            'Restoring... <span class="spinner"></span>';
+          restoreButton.disabled = true;
+          closeButton.disabled = true;
+
+          // Prevent modal from closing
+          modal.style.pointerEvents = "none";
+
+          const response = await fetch(`${API_URL}/restore/${filename}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            statusMessage.className = "status-message status-success";
+            statusMessage.textContent = "Restore completed successfully";
+          } else {
+            statusMessage.className = "status-message status-error";
+            statusMessage.textContent = `Restore failed: ${result.error}`;
+          }
+        } catch (error) {
+          statusMessage.className = "status-message status-error";
+          statusMessage.textContent = "Error during restore operation";
+        } finally {
+          // Reset button states and re-enable modal interaction
+          restoreButton.textContent = "Restore";
+          restoreButton.disabled = false;
+          closeButton.disabled = false;
+          modal.style.pointerEvents = "auto";
+
+          statusMessage.style.display = "block";
+          isRestoring = false; // Reset restoring flag after completion
+        }
+      }
+      function displayFiles(files) {
+        const tbody = document.getElementById("filesList");
+
+        if (files.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="4" class="loading">No backup files found</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = files
+          .map(
+            (file) => `
+                <tr>
+                    <td>${file.name}</td>
+                    <td>${formatFileSize(file.size)}</td>
+                    <td>${formatDate(file.created)}</td>
+                    <td class="actions">
+                        <button 
+                            onclick="downloadFile('${file.name}')" 
+                            class="btn download-btn">
+                            Download
+                        </button>
+                        <button 
+                            onclick="showRestoreModal('${file.name}')" 
+                            class="btn restore-btn">
+                            Restore
+                        </button>
+                        <button 
+                            onclick="deleteFile('${file.name}')" 
+                            class="btn delete-btn">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            `
+          )
+          .join("");
+      }
+
+      // Add event listener for restore form
+      document
+        .getElementById("restoreForm")
+        .addEventListener("submit", restoreBackup);
+
+      // Close modal when clicking outside, only if not restoring
+      window.onclick = function (event) {
+        const modal = document.getElementById("restoreModal");
+        if (event.target === modal && !isRestoring) {
+          closeRestoreModal();
+        }
+      };
+
+      // Initial load
+      fetchFiles();
+
+      // Setup refresh button
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", fetchFiles);
+
+      // Auto-refresh every 60 seconds
+      setInterval(fetchFiles, 60000);
+    </script>
+  </body>
+</html>
