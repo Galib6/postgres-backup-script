@@ -28,7 +28,7 @@ USER postgres
 VOLUME ["/backups", "/var/log"]
 
 # Expose web interface port
-EXPOSE 3000
+EXPOSE 3003
 
 # Change the entrypoint to use the start script
 ENTRYPOINT ["/bin/bash", "/start.sh"]

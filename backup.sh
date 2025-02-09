@@ -6,6 +6,8 @@ BACKUP_DIR="/backups"
 LOG_FILE="/var/log/backup.log"
 LOCK_FILE="/tmp/backup.lock"
 MIN_SPACE_MB=5120
+CLEANUP_INTERVAL_HOURS=$((CLEANUP_INTERVAL_DAYS * 24))  # Convert days to hours
+CLEANUP_INTERVAL_SECONDS=$((CLEANUP_INTERVAL_HOURS * 3600))  # Convert hours to seconds
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -20,13 +22,10 @@ check_space() {
 }
 
 cleanup_old() {
-    log "Cleaning up old backups and log files"
+    log "Cleaning up old backups (older than $CLEANUP_INTERVAL_HOURS hours)"
 
-    # Remove daily backups older than 7 days
-    find "$BACKUP_DIR" -type f -name "pg_backup_*.dump" -mtime +"$CLEANUP_INTERVAL_DAYS" ! -name "*_week_*.dump" -print -delete | tee -a "$LOG_FILE"
-
-    # Keep weekly backups for up to 30 days, then delete older ones
-    find "$BACKUP_DIR" -type f -name "*_week_*.dump" -mtime +30 -print -delete | tee -a "$LOG_FILE"
+    # Find and remove backups older than CLEANUP_INTERVAL_SECONDS
+    find "$BACKUP_DIR" -type f -name "pg_backup_*.dump" -mmin +$((CLEANUP_INTERVAL_SECONDS / 60)) -print -delete | tee -a "$LOG_FILE"
 
     # Trim large log files (larger than 100MB)
     find /var/log/ -type f -size +104857600c -exec rm -f {} \; | tee -a "$LOG_FILE"
