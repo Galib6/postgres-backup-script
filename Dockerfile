@@ -3,6 +3,7 @@ FROM postgres:17-alpine
 # Install necessary tools
 RUN apk add --no-cache bash tzdata postgresql17-client dos2unix nodejs npm
 
+
 # Set up directories
 RUN mkdir -p /backups /var/log /app/web/public
 
@@ -13,7 +14,8 @@ COPY web/server.js /app/web/
 # Install Node.js dependencies
 WORKDIR /app/web
 RUN npm init -y && \
-    npm install express
+    npm install express && \
+    npm install dotenv
 
 # Copy and set up the backup script
 COPY backup.sh /backup.sh

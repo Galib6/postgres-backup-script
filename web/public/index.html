@@ -10,7 +10,8 @@
         margin: 0;
         background-color: #f0f2f5;
         position: relative;
-        height: 100vh;
+        min-height: 100vh;
+        padding-bottom: 40px; /* Space for footer */
       }
       .container {
         max-width: 1200px;
@@ -19,7 +20,6 @@
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        padding: 20px;
       }
       .header {
         display: flex;
@@ -27,6 +27,10 @@
         align-items: center;
         margin-bottom: 20px;
         padding: 10px;
+      }
+      .header-buttons {
+        display: flex;
+        gap: 10px;
       }
       .btn {
         padding: 6px 12px;
@@ -45,6 +49,28 @@
       }
       .refresh-btn:hover {
         background-color: #0056b3;
+      }
+      .create-backup-btn {
+        padding: 8px 16px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .create-backup-btn:hover {
+        background-color: #218838;
+      }
+      .env-backup-btn {
+        padding: 8px 16px;
+        background-color: #6610f2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .env-backup-btn:hover {
+        background-color: #520dc2;
       }
       table {
         width: 100%;
@@ -84,6 +110,14 @@
       .error-message {
         background-color: #f8d7da;
         color: #721c24;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        display: none;
+      }
+      .success-message {
+        background-color: #d4edda;
+        color: #155724;
         padding: 12px;
         border-radius: 4px;
         margin-bottom: 20px;
@@ -158,8 +192,7 @@
       .close-btn:hover {
         background-color: #5a6268;
       }
-
-      .restore-btn .spinner {
+      .spinner {
         border: 2px solid #f3f3f3;
         border-top: 2px solid #007bff;
         border-radius: 50%;
@@ -169,7 +202,35 @@
         display: inline-block;
         margin-left: 8px;
       }
-
+      .footer {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        background-color: white;
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        padding: 10px 0;
+      }
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 2s linear infinite;
+      }
       @keyframes spin {
         0% {
           transform: rotate(0deg);
@@ -184,10 +245,19 @@
     <div class="container">
       <div class="header">
         <h1>PostgreSQL Backup Files Manager</h1>
-        <button id="refreshBtn" class="refresh-btn">Refresh</button>
+        <div class="header-buttons">
+          <button id="envBackupBtn" class="env-backup-btn">
+            ENV Database Backup
+          </button>
+          <button id="createBackupBtn" class="create-backup-btn">
+            Create Custom Backup
+          </button>
+          <button id="refreshBtn" class="refresh-btn">Refresh</button>
+        </div>
       </div>
 
       <div id="errorMessage" class="error-message"></div>
+      <div id="successMessage" class="success-message"></div>
 
       <table>
         <thead>
@@ -218,18 +288,22 @@
           database connection details.
         </p>
       </div>
+      <div>
+        <p>
+          <strong>Create Custom Backup:</strong> Click the "Create Custom
+          Backup" button to create an immediate backup by providing database
+          connection details.
+        </p>
+      </div>
+      <div>
+        <p>
+          <strong>ENV Database Backup:</strong> Click the "ENV Database Backup"
+          button to create a backup using environment variables configured on
+          the server.
+        </p>
+      </div>
     </div>
-    <div
-      style="
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        background-color: white;
-        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        padding: 5px 0;
-      "
-    >
+    <div class="footer">
       <p style="color: #014369; margin: 0">
         Developed by
         <a href="https://github.com/Galib6" target="_blank">Galib</a>
@@ -242,30 +316,41 @@
         <h2>Restore Backup</h2>
         <form id="restoreForm">
           <div class="form-group">
-            <label for="host">Database Host:</label>
+            <label for="restoreHost">Database Host:</label>
             <input
               type="text"
-              id="host"
+              id="restoreHost"
               name="host"
               value="host.docker.internal"
               required
             />
           </div>
           <div class="form-group">
-            <label for="user">Database User:</label>
-            <input type="text" id="user" name="user" value="galib" required />
+            <label for="restoreUser">Database User:</label>
+            <input
+              type="text"
+              id="restoreUser"
+              name="user"
+              value="galib"
+              required
+            />
           </div>
           <div class="form-group">
-            <label for="password">Database Password:</label>
-            <input type="password" id="password" name="password" required />
+            <label for="restorePassword">Database Password:</label>
+            <input
+              type="password"
+              id="restorePassword"
+              name="password"
+              required
+            />
           </div>
           <div class="form-group">
-            <label for="database">Database Name:</label>
-            <input type="text" id="database" name="database" required />
+            <label for="restoreDatabase">Database Name:</label>
+            <input type="text" id="restoreDatabase" name="database" required />
           </div>
           <input type="hidden" id="filename" name="filename" />
           <div
-            id="statusMessage"
+            id="restoreStatusMessage"
             class="status-message"
             style="display: none"
           ></div>
@@ -283,9 +368,74 @@
       </div>
     </div>
 
+    <!-- Create Backup Modal -->
+    <div id="createBackupModal" class="modal">
+      <div class="modal-content">
+        <h2>Create Database Backup</h2>
+        <form id="createBackupForm">
+          <div class="form-group">
+            <label for="backupHost">Database Host:</label>
+            <input
+              type="text"
+              id="backupHost"
+              name="host"
+              value="host.docker.internal"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="backupUser">Database User:</label>
+            <input
+              type="text"
+              id="backupUser"
+              name="user"
+              value="galib"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="backupPassword">Database Password:</label>
+            <input
+              type="password"
+              id="backupPassword"
+              name="password"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="backupDatabase">Database Name:</label>
+            <input type="text" id="backupDatabase" name="database" required />
+          </div>
+          <div
+            id="backupStatusMessage"
+            class="status-message"
+            style="display: none"
+          ></div>
+          <div class="modal-buttons">
+            <button
+              type="button"
+              class="btn close-btn"
+              onclick="closeBackupModal()"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn create-backup-btn">
+              Create Backup
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Global Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+    </div>
+
     <script>
       const API_URL = "/api/backups";
       let isRestoring = false; // Flag to track the restoring process
+      let isCreatingBackup = false; // Flag to track the backup creation process
 
       function formatFileSize(bytes) {
         const sizes = ["B", "KB", "MB", "GB"];
@@ -316,6 +466,14 @@
         });
       }
 
+      function showLoading() {
+        document.getElementById("loadingOverlay").style.display = "flex";
+      }
+
+      function hideLoading() {
+        document.getElementById("loadingOverlay").style.display = "none";
+      }
+
       function showError(message) {
         const errorElement = document.getElementById("errorMessage");
         errorElement.textContent = message;
@@ -325,14 +483,27 @@
         }, 5000);
       }
 
+      function showSuccess(message) {
+        const successElement = document.getElementById("successMessage");
+        successElement.textContent = message;
+        successElement.style.display = "block";
+        setTimeout(() => {
+          successElement.style.display = "none";
+        }, 5000);
+      }
+
       async function fetchFiles() {
         try {
+          showLoading();
           const response = await fetch(API_URL);
+          hideLoading();
+
           if (!response.ok) throw new Error("Failed to fetch files");
           const files = await response.json();
           displayFiles(files);
         } catch (error) {
-          showError("Error loading backup files");
+          hideLoading();
+          showError("Error loading backup files: " + error.message);
           displayFiles([]);
         }
       }
@@ -341,15 +512,19 @@
         if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
 
         try {
+          showLoading();
           const response = await fetch(`${API_URL}/${filename}`, {
             method: "DELETE",
           });
+          hideLoading();
 
           if (!response.ok) throw new Error("Failed to delete file");
 
+          showSuccess(`Successfully deleted ${filename}`);
           fetchFiles();
         } catch (error) {
-          showError("Error deleting file");
+          hideLoading();
+          showError("Error deleting file: " + error.message);
         }
       }
 
@@ -360,17 +535,124 @@
       function showRestoreModal(filename) {
         document.getElementById("filename").value = filename;
         document.getElementById("restoreModal").style.display = "flex";
-        document.getElementById("statusMessage").style.display = "none";
+        document.getElementById("restoreStatusMessage").style.display = "none";
       }
 
       function closeRestoreModal() {
-        document.getElementById("restoreModal").style.display = "none";
+        if (!isRestoring) {
+          document.getElementById("restoreModal").style.display = "none";
+        }
+      }
+
+      function showBackupModal() {
+        document.getElementById("createBackupModal").style.display = "flex";
+        document.getElementById("backupStatusMessage").style.display = "none";
+      }
+
+      function closeBackupModal() {
+        if (!isCreatingBackup) {
+          document.getElementById("createBackupModal").style.display = "none";
+        }
+      }
+
+      async function createBackup(event) {
+        event.preventDefault();
+
+        const statusMessage = document.getElementById("backupStatusMessage");
+        const backupButton = document.querySelector(
+          "#createBackupForm .create-backup-btn"
+        );
+        const closeButton = document.querySelector(
+          "#createBackupForm .close-btn"
+        );
+        const modal = document.getElementById("createBackupModal");
+
+        const formData = {
+          host: document.getElementById("backupHost").value,
+          user: document.getElementById("backupUser").value,
+          password: document.getElementById("backupPassword").value,
+          database: document.getElementById("backupDatabase").value,
+        };
+
+        isCreatingBackup = true;
+
+        try {
+          // Set buttons to loading state
+          backupButton.innerHTML = 'Creating... <span class="spinner"></span>';
+          backupButton.disabled = true;
+          closeButton.disabled = true;
+
+          // Prevent modal from closing
+          modal.style.pointerEvents = "none";
+
+          const response = await fetch(`${API_URL}/create`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            statusMessage.className = "status-message status-success";
+            statusMessage.textContent = "Backup created successfully";
+          } else {
+            statusMessage.className = "status-message status-error";
+            statusMessage.textContent = `Backup failed: ${result.error}`;
+          }
+        } catch (error) {
+          statusMessage.className = "status-message status-error";
+          statusMessage.textContent =
+            "Error during backup operation: " + error.message;
+        } finally {
+          // Reset button states and re-enable modal interaction
+          backupButton.textContent = "Create Backup";
+          backupButton.disabled = false;
+          closeButton.disabled = false;
+          modal.style.pointerEvents = "auto";
+
+          statusMessage.style.display = "block";
+          isCreatingBackup = false; // Reset backup flag after completion
+        }
+      }
+
+      async function createEnvBackup() {
+        try {
+          showLoading();
+
+          // Send the request to the backend to create the backup with env variables
+          const response = await fetch(`${API_URL}/create/env`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          const result = await response.json();
+          hideLoading();
+
+          if (response.ok) {
+            showSuccess("ENV backup created successfully!");
+            fetchFiles();
+          } else {
+            showError(
+              `ENV backup failed: ${
+                result.error || result.details || "Unknown error"
+              }`
+            );
+          }
+        } catch (error) {
+          hideLoading();
+          showError("Error during ENV backup operation: " + error.message);
+        }
       }
 
       async function restoreBackup(event) {
         event.preventDefault();
 
-        const statusMessage = document.getElementById("statusMessage");
+        const statusMessage = document.getElementById("restoreStatusMessage");
         const restoreButton = document.querySelector(
           "#restoreForm .restore-btn"
         );
@@ -378,10 +660,10 @@
         const modal = document.getElementById("restoreModal");
 
         const formData = {
-          host: document.getElementById("host").value,
-          user: document.getElementById("user").value,
-          password: document.getElementById("password").value,
-          database: document.getElementById("database").value,
+          host: document.getElementById("restoreHost").value,
+          user: document.getElementById("restoreUser").value,
+          password: document.getElementById("restorePassword").value,
+          database: document.getElementById("restoreDatabase").value,
         };
         const filename = document.getElementById("filename").value;
         isRestoring = true;
@@ -408,14 +690,19 @@
 
           if (response.ok) {
             statusMessage.className = "status-message status-success";
-            statusMessage.textContent = "Restore completed successfully";
+            statusMessage.textContent =
+              result.message + (result.warnings ? ` (${result.warnings})` : "");
           } else {
             statusMessage.className = "status-message status-error";
             statusMessage.textContent = `Restore failed: ${result.error}`;
+            if (result.details) {
+              statusMessage.textContent += ` (${result.details})`;
+            }
           }
         } catch (error) {
           statusMessage.className = "status-message status-error";
-          statusMessage.textContent = "Error during restore operation";
+          statusMessage.textContent =
+            "Error during restore operation: " + error.message;
         } finally {
           // Reset button states and re-enable modal interaction
           restoreButton.textContent = "Restore";
@@ -427,6 +714,7 @@
           isRestoring = false; // Reset restoring flag after completion
         }
       }
+
       function displayFiles(files) {
         const tbody = document.getElementById("filesList");
 
@@ -450,7 +738,7 @@
                             Download
                         </button>
                         <button 
-                            onclick="showRestoreModal('${file.name}')" 
+                            onclick="showRestoreModal('${file.name}')" '' 
                             class="btn restore-btn">
                             Restore
                         </button>
@@ -466,29 +754,42 @@
           .join("");
       }
 
-      // Add event listener for restore form
+      // Add event listeners
+      document
+        .getElementById("envBackupBtn")
+        .addEventListener("click", createEnvBackup);
+      document
+        .getElementById("createBackupBtn")
+        .addEventListener("click", showBackupModal);
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", fetchFiles);
       document
         .getElementById("restoreForm")
         .addEventListener("submit", restoreBackup);
+      document
+        .getElementById("createBackupForm")
+        .addEventListener("submit", createBackup);
 
-      // Close modal when clicking outside, only if not restoring
+      // Close modals when clicking outside, only if not processing
       window.onclick = function (event) {
-        const modal = document.getElementById("restoreModal");
-        if (event.target === modal && !isRestoring) {
+        const restoreModal = document.getElementById("restoreModal");
+        const backupModal = document.getElementById("createBackupModal");
+
+        if (event.target === restoreModal && !isRestoring) {
           closeRestoreModal();
+        }
+
+        if (event.target === backupModal && !isCreatingBackup) {
+          closeBackupModal();
         }
       };
 
       // Initial load
       fetchFiles();
 
-      // Setup refresh button
-      document
-        .getElementById("refreshBtn")
-        .addEventListener("click", fetchFiles);
-
       // Auto-refresh every 60 seconds
-      setInterval(fetchFiles, 60000);
+      setInterval(fetchFiles, 300000);
     </script>
   </body>
 </html>
