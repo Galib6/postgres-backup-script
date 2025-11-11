@@ -112,6 +112,7 @@ app.post("/api/backups/create", (req, res) => {
       `-d`,
       database,
       `-Fc`, // Custom format
+      `-j 8`,
       `-Z`,
       `9`, // Maximum compression
       `-f`,
