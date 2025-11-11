@@ -55,6 +55,7 @@ create_backup() {
         -h "$POSTGRES_HOST" \
         -U "$POSTGRES_USER" \
         -d "$POSTGRES_DB" \
+        -j 8 \
         -Fc \
         -Z 9 \
         -v \
