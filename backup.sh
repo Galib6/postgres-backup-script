@@ -5,7 +5,7 @@ set -eo pipefail
 BACKUP_DIR="/backups"
 LOG_FILE="/var/log/backup.log"
 LOCK_FILE="/tmp/backup.lock"
-MIN_SPACE_MB=5120
+MIN_SPACE_MB=2048
 CLEANUP_INTERVAL_HOURS=$((CLEANUP_INTERVAL_DAYS * 24))  # Convert days to hours
 CLEANUP_INTERVAL_SECONDS=$((CLEANUP_INTERVAL_HOURS * 3600))  # Convert hours to seconds
 
@@ -55,7 +55,6 @@ create_backup() {
         -h "$POSTGRES_HOST" \
         -U "$POSTGRES_USER" \
         -d "$POSTGRES_DB" \
-        -j 8 \
         -Fc \
         -Z 9 \
         -v \
